@@ -17,13 +17,13 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "electron": "^36.4.0",
     "express": "^5.1.0",
     "portfinder": "^1.0.37",
     "qrcode": "^1.5.4",
     "ws": "^8.18.2"
   },
   "devDependencies": {
+    "electron": "^36.4.0",
     "electron-builder": "^24.13.3"
   }
 }
