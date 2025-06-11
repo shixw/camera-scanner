@@ -5,9 +5,15 @@ document.addEventListener('DOMContentLoaded', () => {
     canvasElement.width = 1280
     canvasElement.height = 720
     const captureBtn = document.getElementById('capture-btn')
+    const closeBtn = document.getElementById('close-btn')
     const resolutionSelect = document.getElementById('resolution')
     const qrcodeContainer = document.getElementById('qrcode')
     const historyContainer = document.getElementById('screenshot-history')
+
+    // 关闭应用
+    closeBtn.addEventListener('click', () => {
+        window.electronAPI.closeApp()
+    })
 
     // 获取并显示二维码
     fetch('http://localhost:3001/qrcode')
