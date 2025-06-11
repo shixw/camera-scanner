@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>手机摄像头</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        
+        video {
+            width: 100%;
+            max-width: 100%;
+            max-height: 80vh;
+        }
+        
+        .status {
+            margin-top: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <video id="camera" autoplay playsinline></video>
+    <div class="status" id="status">正在连接...</div>
+
+    <script>
+        const video = document.getElementById('camera')
+        const statusDiv = document.getElementById('status')
+        const ws = new WebSocket(`ws://${getIPAddress()}:3002`)
+        
+        let currentWidth = 1280
+        let currentHeight = 720
+        
+        // 获取电脑IP地址
+        function getIPAddress() {
+            return window.location.hostname
+        }
+        
+        // 连接WebSocket
+        ws.onopen = () => {
+            statusDiv.textContent = '已连接'
+            startCamera()
+        }
+        
+        ws.onclose = () => {
+            statusDiv.textContent = '连接已断开'
+        }
+        
+        // 启动摄像头
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: currentWidth },
+                        height: { ideal: currentHeight },
+                        facingMode: 'environment'
+                    }
+                })
+                video.srcObject = stream
+                
+                // 优化帧率(15fps)
+                let lastSendTime = 0
+                const sendFrame = () => {
+                    const now = Date.now()
+                    if (now - lastSendTime > 66) { // ~15fps
+                        lastSendTime = now
+                        if (ws.readyState === WebSocket.OPEN) {
+                            captureFrame()
+                        }
+                    }
+                    requestAnimationFrame(sendFrame)
+                }
+                sendFrame()
+            } catch (err) {
+                statusDiv.textContent = '无法访问摄像头: ' + err.message
+            }
+        }
+        
+        // 捕获视频帧并发送
+        function captureFrame() {
+            const canvas = document.createElement('canvas')
+            canvas.width = currentWidth
+            canvas.height = currentHeight
+            const ctx = canvas.getContext('2d')
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+            
+            // 降低质量减少带宽，明确标记为视频帧
+            // 获取二进制图像数据
+            const timestamp = Date.now()
+            // 确保生成标准JPEG格式
+            const quality = 0.7
+            canvas.toBlob(blob => {
+                // 验证Blob数据
+                if (blob.type !== 'image/jpeg' || blob.size === 0) {
+                    console.error('生成的Blob数据无效:', blob)
+                    return
+                }
+                
+                const reader = new FileReader()
+                reader.onload = () => {
+                    const arrayBuffer = reader.result
+                    // 验证数据有效性
+                    if (arrayBuffer.byteLength < 100) {
+                        console.error('图像数据过小:', arrayBuffer.byteLength)
+                        return
+                    }
+                    
+                    // 发送原始ArrayBuffer
+                    ws.send(arrayBuffer)
+                }
+                reader.onerror = (e) => {
+                    console.error('读取Blob失败:', e)
+                }
+                reader.readAsArrayBuffer(blob)
+            }, 'image/jpeg', quality)
+        }
+    </script>
+</body>
+</html>

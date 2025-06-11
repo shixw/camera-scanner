@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手机摄像头扫描仪</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>手机摄像头扫描仪</h1>
+    </div>
+
+    <div class="content-area">
+        <div class="video-container">
+            <canvas id="mobile-stream"></canvas>
+        </div>
+
+        <div class="control-panel">
+            <div class="qr-code-container">
+                <h3>扫描二维码连接手机</h3>
+                <div id="qrcode"></div>
+            </div>
+
+            <div class="controls">
+                <select id="resolution">
+                    <option value="640x480">640×480</option>
+                    <option value="1280x720" selected>1280×720</option>
+                    <option value="1920x1080">1920×1080</option>
+                </select>
+                <button id="capture-btn">截图</button>
+            </div>
+
+            <div class="history-panel">
+                <h3>截图历史</h3>
+                <div id="screenshot-history"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>
