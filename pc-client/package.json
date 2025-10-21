@@ -2,6 +2,10 @@
   "name": "camera-scanner",
   "version": "1.0.0",
   "description": "手机摄像头扫描仪应用",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shixw/camera-scanner.git"
+  },
   "main": "main.js",
   "scripts": {
     "start": "electron .",
