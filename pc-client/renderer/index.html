@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手机摄像头扫描仪 - PC端</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>手机摄像头扫描仪 - PC端</h1>
+        <div class="connection-status" id="connectionStatus">
+            <span class="status-indicator" id="statusIndicator"></span>
+            <span id="statusText">未连接</span>
+        </div>
+    </div>
+
+    <div class="content-area">
+        <div class="video-container">
+            <canvas id="mobile-stream"></canvas>
+            <div class="no-connection" id="noConnection">
+                <p>等待手机端连接...</p>
+                <p>请扫描右侧二维码或在手机端手动输入连接信息</p>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <!-- 配置区域 -->
+            <div class="config-section">
+                <h3>配置设置</h3>
+                <div class="config-item">
+                    <label for="mobileUrl">手机端URL:</label>
+                    <input type="url" id="mobileUrl" placeholder="https://your-mobile-app.com" />
+                    <button id="updateUrlBtn">更新</button>
+                </div>
+                <div class="connection-info">
+                    <div class="info-item">
+                        <label>本机IP:</label>
+                        <span id="localIP">获取中...</span>
+                    </div>
+                    <div class="info-item">
+                        <label>WebSocket端口:</label>
+                        <span id="wsPort">获取中...</span>
+                    </div>
+                    <div class="info-item">
+                        <label>连接数:</label>
+                        <span id="connectionCount">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 二维码区域 -->
+            <div class="qr-code-container" id="qrContainer">
+                <h3>扫描二维码连接手机</h3>
+                <div id="qrcode">生成中...</div>
+                <button id="refreshQrBtn">刷新二维码</button>
+            </div>
+
+            <!-- 控制区域 -->
+            <div class="controls">
+                <select id="resolution">
+                    <option value="640x480">640×480</option>
+                    <option value="1280x720" selected>1280×720</option>
+                    <option value="1920x1080">1920×1080</option>
+                </select>
+                <button id="capture-btn">截图</button>
+                <button id="close-btn">关闭应用</button>
+            </div>
+
+            <!-- 截图历史 -->
+            <div class="history-panel">
+                <h3>截图历史</h3>
+                <div id="screenshot-history"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="renderer.js"></script>
+</body>
+</html>

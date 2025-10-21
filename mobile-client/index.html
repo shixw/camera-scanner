@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>手机摄像头扫描仪</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            color: white;
+            font-family: Arial, sans-serif;
+            position: relative;
+        }
+        
+        video {
+            width: 100%;
+            max-width: 100%;
+            max-height: 70vh;
+            object-fit: cover;
+        }
+        
+        .status {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 16px;
+        }
+        
+        .manual-connect {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+            min-width: 250px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .manual-connect.show {
+            display: block;
+        }
+        
+        .manual-connect .input-group {
+            margin-bottom: 10px;
+        }
+        
+        .manual-connect label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .manual-connect input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #333;
+            border-radius: 4px;
+            background: #222;
+            color: white;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        .manual-connect input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .manual-connect button {
+            width: 100%;
+            padding: 10px 16px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        
+        .manual-connect button:hover {
+            background: #0056b3;
+        }
+        
+        .toggle-manual {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .connected .toggle-manual,
+        .connected .manual-connect {
+            display: none !important;
+        }
+        
+        .connection-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            max-width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <button class="toggle-manual" id="toggleManual">手动连接</button>
+    
+    <div class="manual-connect" id="manualConnect">
+        <div class="input-group">
+            <label for="wsHost">WebSocket地址:</label>
+            <input type="text" id="wsHost" placeholder="192.168.1.100" />
+        </div>
+        <div class="input-group">
+            <label for="wsPort">WebSocket端口:</label>
+            <input type="number" id="wsPort" placeholder="3002" />
+        </div>
+        <button id="connectBtn">连接</button>
+    </div>
+    
+    <video id="camera" autoplay playsinline></video>
+    <div class="status" id="status">正在初始化...</div>
+    
+    <div class="connection-info" id="connectionInfo"></div>
+
+    <script>
+        const video = document.getElementById('camera')
+        const statusDiv = document.getElementById('status')
+        const toggleManualBtn = document.getElementById('toggleManual')
+        const manualConnectDiv = document.getElementById('manualConnect')
+        const wsHostInput = document.getElementById('wsHost')
+        const wsPortInput = document.getElementById('wsPort')
+        const connectBtn = document.getElementById('connectBtn')
+        const connectionInfoDiv = document.getElementById('connectionInfo')
+        
+        let ws = null
+        let currentWidth = 1280
+        let currentHeight = 720
+        let isConnected = false
+        
+        // 解析URL参数
+        function getUrlParams() {
+            const params = new URLSearchParams(window.location.search)
+            return {
+                wsHost: params.get('wsHost'),
+                wsPort: params.get('wsPort'),
+                width: params.get('width') || '1280',
+                height: params.get('height') || '720'
+            }
+        }
+        
+        // 更新连接状态
+        function updateConnectionStatus(connected, info = '') {
+            isConnected = connected
+            if (connected) {
+                document.body.classList.add('connected')
+                statusDiv.textContent = '已连接'
+                connectionInfoDiv.textContent = info
+            } else {
+                document.body.classList.remove('connected')
+                statusDiv.textContent = '未连接'
+                connectionInfoDiv.textContent = ''
+            }
+        }
+        
+        // 连接WebSocket
+        function connectWebSocket(host, port) {
+            if (ws) {
+                ws.close()
+            }
+            
+            const wsUrl = `ws://${host}:${port}`
+            statusDiv.textContent = `正在连接 ${wsUrl}...`
+            
+            ws = new WebSocket(wsUrl)
+            
+            ws.onopen = () => {
+                updateConnectionStatus(true, `已连接到: ${wsUrl}`)
+                startCamera()
+            }
+            
+            ws.onclose = () => {
+                updateConnectionStatus(false)
+                statusDiv.textContent = '连接已断开'
+            }
+            
+            ws.onerror = (error) => {
+                updateConnectionStatus(false)
+                statusDiv.textContent = '连接失败'
+                console.error('WebSocket错误:', error)
+            }
+        }
+        
+        // 启动摄像头
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: currentWidth },
+                        height: { ideal: currentHeight },
+                        facingMode: 'environment'
+                    }
+                })
+                video.srcObject = stream
+                
+                // 优化帧率(15fps)
+                let lastSendTime = 0
+                const sendFrame = () => {
+                    const now = Date.now()
+                    if (now - lastSendTime > 66) { // ~15fps
+                        lastSendTime = now
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            captureFrame()
+                        }
+                    }
+                    requestAnimationFrame(sendFrame)
+                }
+                sendFrame()
+            } catch (err) {
+                statusDiv.textContent = '无法访问摄像头: ' + err.message
+            }
+        }
+        
+        // 捕获视频帧并发送
+        function captureFrame() {
+            const canvas = document.createElement('canvas')
+            canvas.width = currentWidth
+            canvas.height = currentHeight
+            const ctx = canvas.getContext('2d')
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+            
+            // 降低质量减少带宽
+            const quality = 0.7
+            canvas.toBlob(blob => {
+                if (blob.type !== 'image/jpeg' || blob.size === 0) {
+                    console.error('生成的Blob数据无效:', blob)
+                    return
+                }
+                
+                const reader = new FileReader()
+                reader.onload = () => {
+                    const arrayBuffer = reader.result
+                    if (arrayBuffer.byteLength < 100) {
+                        console.error('图像数据过小:', arrayBuffer.byteLength)
+                        return
+                    }
+                    
+                    // 发送原始ArrayBuffer
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(arrayBuffer)
+                    }
+                }
+                reader.onerror = (e) => {
+                    console.error('读取Blob失败:', e)
+                }
+                reader.readAsArrayBuffer(blob)
+            }, 'image/jpeg', quality)
+        }
+        
+        // 手动连接功能
+        toggleManualBtn.addEventListener('click', () => {
+            manualConnectDiv.classList.toggle('show')
+        })
+        
+        connectBtn.addEventListener('click', () => {
+            const host = wsHostInput.value.trim()
+            const port = wsPortInput.value.trim()
+            
+            if (!host || !port) {
+                alert('请输入WebSocket地址和端口')
+                return
+            }
+            
+            connectWebSocket(host, port)
+            manualConnectDiv.classList.remove('show')
+        })
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = getUrlParams()
+            
+            // 设置分辨率
+            currentWidth = parseInt(params.width)
+            currentHeight = parseInt(params.height)
+            
+            // 如果URL中有连接参数，自动连接
+            if (params.wsHost && params.wsPort) {
+                wsHostInput.value = params.wsHost
+                wsPortInput.value = params.wsPort
+                connectWebSocket(params.wsHost, params.wsPort)
+            } else {
+                statusDiv.textContent = '请扫描二维码或手动输入连接信息'
+            }
+        })
+    </script>
+</body>
+</html>
